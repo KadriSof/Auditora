@@ -2,20 +2,17 @@
 Context proxy for seamless access to current context objects.
 """
 from typing import Any, Iterator
-from .paragon import Paragon
-
-
-_PARAGON = Paragon()
+from .paragon import _PARAGON
 
 
 class _ContextProxy:
     """Proxy that delegated to current context object with full magic method support."""
     def __init__(self, key: str):
-        self.key = key
+        self._key = key
 
     def _get_current_context(self) -> Any:
         context = _PARAGON.get_context()
-        return context[self.key]
+        return context[self._key]
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._get_current_context(), name)

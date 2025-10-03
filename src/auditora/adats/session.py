@@ -4,13 +4,16 @@ Context: Session Adat - Session manager for state tracking.
 
 Trivia: 'Adat' is the Arabic word for 'tool'. The plural is 'Adawat', but for simplicity I choose 'Adats')
 """
+import uuid
+
 from typing import Any, Dict, List
 from datetime import datetime
 
 
 class DefaultSession:
     """Adat-1: Session manager for state tracking."""
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, session_id: str = None, name: str | None = None) -> None:
+        self.session_id = session_id or str(uuid.uuid4())
         self.name = name or "default-session"
         self._state = {}
         self._created_at = datetime.now()
@@ -34,6 +37,7 @@ class DefaultSession:
     def get_state_snapshot(self) -> Dict[str, Any]:
         """Get complete session state snapshot for debugging."""
         return {
+            'session_id': self.session_id,
             'session_name': self.name,
             'created_at': self._created_at.isoformat(),
             'tags': self._tags,

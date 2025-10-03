@@ -40,6 +40,10 @@ class DefaultMonitor:
         self.track(event=f"{event}_completed", duration=duration, **metadata)
         return duration
 
+    def increment_metric(self, name: str, value: float = 1.0) -> None:
+        """Increment a metric counter."""
+        self._metrics[name] = self._metrics.get(name, 0) + value
+
     def get_events(self) -> List[Dict[str, Any]]:
         return self._events.copy()
 
