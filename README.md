@@ -1,4 +1,4 @@
-# Auditora
+# Auditora: Non-invasive observability for LLM systems and data pipelines
 
 [![PyPI version](https://badge.fury.io/py/levelapp.svg)](https://badge.fury.io/py/levelapp)  
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)  
