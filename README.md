@@ -6,8 +6,15 @@
 
 ## Overview
 A lightweight non-invasive instrumentation framework for data processing pipelines 
-and LLM-powered systems.<br/> Auditora provides **session**, **monitor**, and **report** context objects
-to track and surveil different events under **sentinel** watch.
+and LLM-powered systems.<br/> 
+
+Auditora provides:
+✅ Context-aware architecture using Python's contextvars
+✅ Thread and async-safe execution contexts
+✅ Pluggable Adats (Session, Monitor, Report)
+✅ Intelligent Sentinel decorator with sync/async detection
+✅ Proper token-based context management via Bifrost
+✅ PyPI-ready packaging with UV
 
 ## Context
 Auditora leverages Python's **Context Variables** (introduced in Python 3.7) to provide 
