@@ -11,13 +11,17 @@ from datetime import datetime
 
 
 class DefaultSession:
-    """Adat-1: Session manager for state tracking."""
+    """Adat-1: Advanced session manager for state tracking."""
+
+    __slots__ = ('name', 'session_id', '_state', '_created_at', '_tags')
+
     def __init__(self, session_id: str = None, name: str | None = None) -> None:
-        self.session_id = session_id or str(uuid.uuid4())
         self.name = name or "default-session"
+        self.session_id = session_id or str(uuid.uuid4())
+
         self._state = {}
         self._created_at = datetime.now()
-        self._tags = []
+        self._tags: List[str] = []
 
     def get(self, key: str, default: Any = None) -> Any:
         return self._state.get(key, default)
