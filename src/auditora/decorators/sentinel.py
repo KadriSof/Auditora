@@ -1,6 +1,6 @@
 """
 File: "src/auditora/decorators/sentinel.py"
-Context: A context wrapper decorator for Auditora framework.
+Context: High-performance context wrapper decorator for Auditora framework.
 """
 import time
 import inspect
@@ -33,25 +33,28 @@ def sentinel(
         session_id: Optional session ID for tracking. Auto-generated if not provided.
     """
     session_obj = session if session is not None else DefaultSession(session_id=session_id)
-    monitor_obj = monitor if session is not None else DefaultMonitor()
-    report_obj = report if session is not None else DefaultReport()
+    monitor_obj = monitor if monitor is not None else DefaultMonitor()
+    report_obj = report if report is not None else DefaultReport()
 
     def decorator(func: Callable) -> Callable:
         if inspect.iscoroutinefunction(func):
             @wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+
                 report_obj.debug(
                     f"Starting {func.__name__!r}",
                     function_name=func.__name__,
                     args_count=len(args),
                     kwargs_keys=list(kwargs.keys()),
                 )
+
                 async with bifrost_async(session=session_obj, monitor=monitor_obj, report=report_obj):
                     try:
                         start_time = time.perf_counter()
                         result = await func(*args, **kwargs)
                         duration = time.perf_counter() - start_time
 
+                        # TODO-0: We can skip this logging in stealth mode
                         report_obj.debug(
                             f"Completed {func.__name__!r}",
                             function_name=func.__name__,
@@ -79,12 +82,14 @@ def sentinel(
         else:
             @wraps(func)
             def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+
                 report_obj.debug(
                     f"Starting {func.__name__!r}",
                     function_name=func.__name__,
                     args_count=len(args),
                     kwargs_keys=list(kwargs.keys()),
                 )
+
                 with bifrost_sync(session=session_obj, monitor=monitor_obj, report=report_obj):
                     try:
                         start_time = time.perf_counter()
@@ -97,7 +102,9 @@ def sentinel(
                             duration=duration,
                             success=True,
                         )
+
                         return result
+
                     except Exception as e:
                         report_obj.error(
                             f"Exception in {func.__name__!r}: {str(e)}",
@@ -110,6 +117,7 @@ def sentinel(
             sync_wrapper._session = session_obj
             sync_wrapper._monitor = monitor_obj
             sync_wrapper._report = report_obj
+
             return sync_wrapper
 
     return decorator
