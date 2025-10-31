@@ -14,9 +14,9 @@ optimized_monitor = OptimizedMonitor()
 def track_events_basic(n_events: int):
     """Basic event tracking benchmark."""
     for i in range(n_events):
-        # large_metadata = {f'key_{j}': f'value_{j}' * 10 for j in range(20)}
-        # monitor.track(f"event_{i}", counter=i, value=i * 2.5, **large_metadata)
-        monitor.track(f"event_{i}", counter=i, value=i * 2.5)
+        large_metadata = {f'key_{j}': f'value_{j}' * 10 for j in range(20)}
+        monitor.track(f"event_{i}", counter=i, value=i * 2.5, **large_metadata)
+        # monitor.track(f"event_{i}", counter=i, value=i * 2.5)
         if i % 100 == 0:
             session.set(f"checkpoint_{i}", i)
 
@@ -43,11 +43,11 @@ def benchmark_basic():
     duration = statistics.mean(durations)
     events_per_second = n_events / duration
 
-    print(f"Basic Benchmark Results:")
+    print("Basic Benchmark Results:")
     print(f"Events: {n_events:,}")
     print(f"Time: {duration:.4f} seconds")
     print(f"Throughput: {events_per_second:,.0f} events/second")
-    print(f"Avg time per event: {(duration / n_events) * 1_000_000:.2f} microseconds")
+    print(f"Avg. time per event: {(duration / n_events) * 1_000_000:.2f} microseconds")
 
     # Get monitor stats
     monitor_obj = track_events_basic._monitor
