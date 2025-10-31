@@ -10,6 +10,7 @@ class EventRecord(NamedTuple):
         metadata (dict): Additional details about the event.
     """
     etype: str
+    elapsed: float
     timestamp: str
     metadata: dict
 
