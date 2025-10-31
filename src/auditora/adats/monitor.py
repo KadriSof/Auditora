@@ -28,7 +28,7 @@ class DefaultMonitor:
     def track(self, event: str, duration: float | None = None, **metadata) -> None:
         """Event fast tracking with minimal allocation."""
         if self._event_count >= self._max_buffer_size:
-            # Handle buffer overflow (e.g., flush to disk, send to external system, dropt oldest events, etc.)
+            # Handle buffer overflow (e.g., flush to disk, send to external system, drop oldest events, etc.)
             return
 
         current_time = time.perf_counter()
@@ -39,12 +39,13 @@ class DefaultMonitor:
 
         event_record = EventRecord(
             etype=event,
-            timestamp=elapsed,
+            elapsed=elapsed,
+            timestamp='',
             metadata=metadata
         )
 
         if duration is not None:
-            event_record.details['duration'] = duration
+            event_record.metadata['duration'] = duration
 
         event_record.update_metadata(metadata)
 
@@ -103,9 +104,9 @@ class DefaultMonitor:
         events = self.get_events()
         counts = {}
 
-        if isinstance(events[-1], dict):
+        if events:
             for event in events:
-                event_type = event.get('event', 'N/A')
+                event_type = event.etype
                 counts[event_type] = counts.get(event_type, 0) + 1
 
             return counts

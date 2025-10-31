@@ -19,15 +19,35 @@ class DefaultSession:
         self.name = name or "default-session"
         self.session_id = session_id or str(uuid.uuid4())
 
-        self._state = {}
+        self._state: Dict[str, List] = {}
         self._created_at = datetime.now()
         self._tags: List[str] = []
 
     def get(self, key: str, default: Any = None) -> Any:
+        """
+        Basic state management getter.
+
+        Args:
+            key (str): The key of the session data to fetch.
+            default (Any): The default value.
+
+        Returns:
+            The retrieved session state data.
+        """
         return self._state.get(key, default)
 
     def set(self, key: str, value: Any) -> None:
-        self._state[key] = value
+        """
+        Basic state management setter.
+
+        Args:
+            key (str): The key of the session data to store.
+            value (Any): The value the session data to store.
+        """
+        if key in self._state.keys():
+            self._state[key].append(value)
+        else:
+            self._state[key] = [value]
 
     def add_tag(self, tag: str) -> None:
         """Add metadata tags to the session."""

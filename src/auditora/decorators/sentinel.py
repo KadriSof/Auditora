@@ -74,8 +74,8 @@ def sentinel(
                         raise
 
             async_wrapper._session = session_obj
-            async_wrapper._monitor = monitor_obj
-            async_wrapper._report = report_obj
+            async_wrapper.monitor = monitor_obj
+            async_wrapper.report = report_obj
 
             return async_wrapper
 
@@ -115,8 +115,8 @@ def sentinel(
                         raise
 
             sync_wrapper._session = session_obj
-            sync_wrapper._monitor = monitor_obj
-            sync_wrapper._report = report_obj
+            sync_wrapper.monitor = monitor_obj
+            sync_wrapper.report = report_obj
 
             return sync_wrapper
 
