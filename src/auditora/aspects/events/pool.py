@@ -6,11 +6,12 @@ objects to reduce memory allocation overhead in high-throughput scenarios.
 """
 
 import threading
-
-from time import monotonic
 from contextlib import contextmanager
 from queue import Queue, Empty, Full
 from typing import Set, Callable
+from time import monotonic
+
+from auditora.aspects.events.builder import EventBuilder
 
 
 class PoolExhaustedError(Exception):
@@ -36,10 +37,14 @@ class EventPool:
 
     Example:
         >>> pool = EventPool(maxsize=100, timeout=5.0)
-        >>> with pool.acquire() as event:
-        ...     event.user_id = 123
+        >>> with pool.acquire() as builder:
+        ...     event = builder
+        ...         .set_type("user.login")
+        ...         .set_timestamp()
+        ...         .set_metadata({"user_metadata": 420})
+        ...         .build()
         ...     # Use event...
-        ... # Event automatically returned to pool
+        ... # Builder automatically cleared returned to pool
     """
 
     __slots__ = (
@@ -106,7 +111,7 @@ class EventPool:
             force_new: If True, bypass pool and create fresh object
 
         Yields:
-            EventRecord: A cleared event record ready for use
+            EventBuilder: A cleared builder ready for use
 
         Raises:
             PoolExhaustedError: If pool exhausted and timeout exceeded
@@ -116,71 +121,72 @@ class EventPool:
             >>> with pool.acquire(timeout=2.0) as event:
             ...     event.data = "value"
         """
-        event = None
+        builder: EventBuilder | None = None
         start_time = monotonic()
         use_timeout = timeout if timeout is not None else self._timeout
 
         try:
             # Strategy: Get from pool or create new
             if not force_new:
-                event = self._try_acquire_from_pool(use_timeout, start_time)
+                builder = self._try_acquire_from_pool(use_timeout, start_time)
 
-            if event is None:
-                event = self._create_new()
+            if builder is None:
+                builder = self._create_new()
 
             # Validate before yielding
-            if not self._validator(event):
+            if not self._validator(builder):
                 self._stats["failed_validations"] += 1
                 raise RuntimeError("Event validation failed - object is corrupted")
 
             # Track active objects
             with self._lock:
-                self._active.add(id(event))
+                self._active.add(id(builder))
 
-            yield event
+            yield builder
 
         finally:
             # Guaranteed cleanup path
-            if event:
-                self._return_to_pool(event)
+            if builder:
+                self._return_to_pool(builder)
 
-    def _try_acquire_from_pool(self, timeout: float, start_time: float) -> object:
+    def _try_acquire_from_pool(
+        self, timeout: float, start_time: float
+    ) -> EventBuilder | None:
         """Attempt to get existing object from pool with timeout."""
         remaining = self._time_remaining(start_time, timeout)
 
         try:
             # Blocking get with timeout
-            event = self._pool.get(timeout=remaining if remaining > 0 else 0)
-            self._cleaner(event)  # Deep cleanup
+            builder = self._pool.get(timeout=remaining if remaining > 0 else 0)
+            self._cleaner(builder)  # Deep cleanup
             self._stats["reused"] += 1
-            return event
+            return builder
         except Empty:
             # Pool empty - will create new
-            self._stats["created"] += 1
             return None
 
-    def _create_new(self) -> object:
+    def _create_new(self) -> EventBuilder:
         """Create a fresh EventRecord instance."""
-        from src.auditora.aspects.events.record import EventRecord
+        from src.auditora.aspects.events.builder import EventBuilder
 
         self._stats["created"] += 1
-        return EventRecord()
+        return EventBuilder()
 
-    def _return_to_pool(self, event: object) -> None:
+    def _return_to_pool(self, builder: object) -> None:
         """Return object to pool or discard if pool is full/corrupted."""
         # Remove from active tracking
         with self._lock:
-            self._active.discard(id(event))
+            self._active.discard(id(builder))
 
         # Validate before returning
-        if not self._validator(event):
+        if not self._validator(builder):
             self._stats["discarded"] += 1
             self._stats["failed_validations"] += 1
             return  # Discard corrupted object
 
         # Attempt to return to pool
         try:
-            self._pool.put_nowait(event)
+            self._pool.put_nowait(builder)
         except Full:
             # Pool at capacity - discard this object
             self._stats["discarded"] += 1
@@ -267,19 +273,26 @@ def create_event_pool(maxsize: int = 1000, strict: bool = False) -> EventPool:
     return EventPool(maxsize=maxsize)
 
 
-# Usage Example:
 if __name__ == "__main__":
+    # Basic usage
     pool = EventPool(maxsize=100)
-    with pool.acquire() as event:
-        event.process()
+    with pool.acquire() as builder:
+        event = (
+            builder.set_type("test.event")
+            .set_timestamp()
+            .set_metadata({"test": True})
+            .build()
+        )
+
+        print(f"Created immutable event: {event}")
 
     # With custom validation
-    def validate_event(event):
-        return not getattr(event, "corrupted", false)
+    def validate_builder(builder):
+        return hasattr(builder, "clear")
 
-    pool = EventPool(maxsize=500, validator=validate_event)
+    pool = EventPool(maxsize=500, validator=validate_builder)
 
-    # Strict mode (no creation, no empty)
+    # Strict mode (no creation on empty)
     strict_pool = create_event_pool(maxsize=50, strict=True)
 
     # Monitor pool health
