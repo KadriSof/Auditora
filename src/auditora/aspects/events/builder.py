@@ -6,7 +6,7 @@ object pooling scenarios where EventRecord must remain immutable but
 allocation overhead needs to be minimized
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from typing import Any
 
@@ -89,8 +89,8 @@ class EventBuilder:
         """
         if timestamp is None:
             # Generate timestamp efficiently without strftime overhead
-            now = datetime.now()
-            timestamp = f"{now.isoformat(timespec="milliseconds")}"
+            now = datetime.now(timezone.utc)
+            timestamp = now.isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
         elif not isinstance(timestamp, str):
             raise TypeError(
@@ -171,7 +171,7 @@ class EventBuilder:
 
         # Create immutable event with copied metadata
         event = EventRecord(
-            etype=self._etype, timestamp=self._timestamp, metadata=self._metadata
+            etype=self._etype, timestamp=self._timestamp, metadata=self._metadata.copy()
         )
 
         self._built = True

@@ -1,4 +1,5 @@
-from typing import NamedTuple
+from types import MappingProxyType
+from typing import NamedTuple, cast
 
 
 class EventRecord(NamedTuple):
@@ -9,9 +10,12 @@ class EventRecord(NamedTuple):
         timestamp (str): The time the event occurred, in ISO 8601 format.
         metadata (dict): Additional details about the event.
     """
+
     etype: str
     timestamp: str
     metadata: dict
 
-    def update_metadata(self, metadata):
-        self.metadata.update(metadata)
+    def __new__(cls, etype: str, timestamp: str, metadata: dict):
+        """Create a new EventRecord with immutable metadata"""
+        immutable_metadata = cast(dict, MappingProxyType(metadata))
+        return super().__new__(cls, (etype, timestamp, immutable_metadata))
