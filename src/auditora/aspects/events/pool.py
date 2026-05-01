@@ -11,7 +11,7 @@ from queue import Queue, Empty, Full
 from typing import Set, Callable
 from time import monotonic
 
-from auditora.aspects.events.builder import EventBuilder
+from src.auditora.aspects.events.builder import EventBuilder
 
 
 class PoolExhaustedError(Exception):
@@ -64,6 +64,7 @@ class EventPool:
         timeout: float = 5.0,
         validator: Callable[[object], bool] | None = None,
         cleaner: Callable[[object], None] | None = None,
+        strict: bool = False,
     ):
         """
         Initialize the event pool.
@@ -73,6 +74,7 @@ class EventPool:
             timeout: Maximum seconds to wait when pool is exhausted (default: 5.0)
             validator: Optional function to validate object health before reuse
             cleaner: Optional function for deep cleanup of reused objects
+            strict: if True, raise PoolExhaustedError when pool is empty instead of creating new objects
 
         Raises:
             ValueError: If maxsize < 1 or timeout < 0
@@ -89,6 +91,7 @@ class EventPool:
         self._lock = threading.Lock()
         self._validator = validator or (lambda _: True)
         self._cleaner = cleaner or (lambda _: None)
+        self._strict = strict
 
         # Performance metrics (for monitoring, not synchronization)
         self._stats = {
@@ -131,6 +134,13 @@ class EventPool:
                 builder = self._try_acquire_from_pool(use_timeout, start_time)
 
             if builder is None:
+                if self._strict and not force_new:
+                    # If strict mode, pool empty means exhaustion
+                    raise PoolExhaustedError(
+                        f"Pool exhaused: no idle objects available after {use_timeout}s timeout"
+                        f"(maxsize={self._maxsize}, active={self.active_count})"
+                    )
+
                 builder = self._create_new()
 
             # Validate before yielding
@@ -149,6 +159,7 @@ class EventPool:
             if builder:
                 self._return_to_pool(builder)
 
+    # TODO-1: Add strict timeout respect constraint
     def _try_acquire_from_pool(
         self, timeout: float, start_time: float
     ) -> EventBuilder | None:
