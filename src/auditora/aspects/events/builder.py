@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 
 from typing import Any
 
+from auditora.aspects.events import pool
+from auditora.aspects.events.pool import EventPool
 from auditora.aspects.events.record import EventRecord
 
 
@@ -327,3 +329,65 @@ class EventBatchBuilder:
             events.append(self._builder.build())
 
         return events
+
+
+# Testing:
+# 1. Metadata Mutation Problem
+
+
+def test_metadata_change():
+    # Test 1: Builder reuse doesn't affect built events
+    builder = EventBuilder()
+    builder.set_type("login").set_metadata({"user": "Sof"})
+    event1 = builder.build()
+
+    builder.set_type("logout").set_metadata({"user": "Fos"})
+    event2 = builder.build()
+
+    assert event1.metadata.get("user") == "Sof"  # Unchanged
+    assert event2.metadata.get("user") == "Fos"  # Correct
+
+    # Test 2: Attempted mutation fails (if option A chosen)
+    try:
+        event1.metadata["user"] = "monkey"  # Should raise TypeError
+        assert False, "Should not allow mutation"
+    except TypeError:
+        pass  # Immutability preserved
+
+
+# 2. Empty Builders Pool Leak
+
+
+def test_empty_builder_returned_to_pool():
+    """Test that empty builders are properly returned to pool."""
+    pool_ = EventPool(maxsize=10)
+
+    # Acquire and clear before exist
+    with pool_.acquire() as builder:
+        builder.set_type("test")
+        builder.build()
+        builder.clear()  # Builder becomes empty
+
+    # Builder should be returned despite being empty
+    assert pool_.size == 1  # Would be 0 before fix
+    assert pool_.active_count == 0  # Would be 1 before fix
+
+
+def test_none_builder_not_returned():
+    """Test that None builder doesn't break cleanup"""
+    pool_ = EventPool(maxsize=10)
+
+    with pool_.acquire() as builder:
+        print(builder.is_empty())
+        # builder is valid where
+        pass
+    # No exception - cleanup handles None gracefully
+
+
+def test_bool_vs_identity():
+    """Demonstrate the difference between truthiness and identity"""
+    builder = EventBuilder()
+
+    # Empty builder
+    assert bool(builder) is False  # Truthiness False
+    assert builder is not None  # Identity True

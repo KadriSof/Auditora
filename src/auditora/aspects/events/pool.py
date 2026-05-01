@@ -146,7 +146,7 @@ class EventPool:
 
         finally:
             # Guaranteed cleanup path
-            if builder:
+            if builder is not None:
                 self._return_to_pool(builder)
 
     def _try_acquire_from_pool(
@@ -251,7 +251,7 @@ class EventPool:
 
 
 # Convenience factory function for common configurations
-def create_event_pool(maxsize: int = 1000, strict: bool = False) -> EventPool:
+def create_event_pool_(maxsize: int = 1000, strict: bool = False) -> EventPool:
     """
     Create a configured event pool.
 
@@ -293,7 +293,7 @@ if __name__ == "__main__":
     pool = EventPool(maxsize=500, validator=validate_builder)
 
     # Strict mode (no creation on empty)
-    strict_pool = create_event_pool(maxsize=50, strict=True)
+    strict_pool = create_event_pool_(maxsize=50, strict=True)
 
     # Monitor pool health
     stats = pool.stats()
