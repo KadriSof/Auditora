@@ -146,7 +146,7 @@ class EventPool:
 
         finally:
             # Guaranteed cleanup path
-            if builder is not None:
+            if builder:
                 self._return_to_pool(builder)
 
     def _try_acquire_from_pool(
@@ -158,6 +158,11 @@ class EventPool:
         try:
             # Blocking get with timeout
             builder = self._pool.get(timeout=remaining if remaining > 0 else 0)
+
+            # Enforce builder clearing to ensure no stale data leaks between borrowers
+            if hasattr(builder, "clear") and callable(builder.clear):
+                builder.clear()
+
             self._cleaner(builder)  # Deep cleanup
             self._stats["reused"] += 1
             return builder
@@ -172,11 +177,21 @@ class EventPool:
         self._stats["created"] += 1
         return EventBuilder()
 
-    def _return_to_pool(self, builder: object) -> None:
+    def _return_to_pool(self, builder: EventBuilder) -> None:
         """Return object to pool or discard if pool is full/corrupted."""
         # Remove from active tracking
         with self._lock:
             self._active.discard(id(builder))
+
+        # TODO-0: Replace with helper method.
+        if hasattr(builder, "clear") and callable(builder.clear):
+            try:
+                builder.clear()
+            except Exception:
+                # If clear fails, builder is corrupted - discard it
+                self._stats["discarded"] += 1
+                self._stats["failed_validations"] += 1
+                return
 
         # Validate before returning
         if not self._validator(builder):
