@@ -11,7 +11,7 @@ from queue import Queue, Empty, Full
 from typing import Set, Callable
 from time import monotonic
 
-from src.auditora.aspects.events.builder import EventBuilder
+from auditora.aspects.events.builder import EventBuilder
 
 
 class PoolExhaustedError(Exception):
@@ -56,6 +56,7 @@ class EventPool:
         "_stats",
         "_validator",
         "_cleaner",
+        "_strict",
     )
 
     def __init__(
@@ -159,7 +160,7 @@ class EventPool:
             if builder:
                 self._return_to_pool(builder)
 
-    # TODO-1: Add strict timeout respect constraint
+    # TODO: Add strict timeout respect constraint
     def _try_acquire_from_pool(
         self, timeout: float, start_time: float
     ) -> EventBuilder | None:
@@ -168,7 +169,12 @@ class EventPool:
 
         try:
             # Blocking get with timeout
-            builder = self._pool.get(timeout=remaining if remaining > 0 else 0)
+            if remaining > 0:
+                builder = self._pool.get(timeout=remaining)
+            elif remaining == 0:
+                builder = self._pool.get_nowait()
+            else:
+                return None
 
             # Enforce builder clearing to ensure no stale data leaks between borrowers
             if hasattr(builder, "clear") and callable(builder.clear):
@@ -183,7 +189,8 @@ class EventPool:
 
     def _create_new(self) -> EventBuilder:
         """Create a fresh EventRecord instance."""
-        from src.auditora.aspects.events.builder import EventBuilder
+        # TODO: Find a final fix to the circular import issue
+        from auditora.aspects.events.builder import EventBuilder
 
         self._stats["created"] += 1
         return EventBuilder()
@@ -194,7 +201,7 @@ class EventPool:
         with self._lock:
             self._active.discard(id(builder))
 
-        # TODO-0: Replace with helper method.
+        # TODO: Replace with helper method.
         if hasattr(builder, "clear") and callable(builder.clear):
             try:
                 builder.clear()
