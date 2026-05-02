@@ -1,5 +1,5 @@
 """
-File: "src/auditora/adats/session.py"
+File: "auditora/adats/session.py"
 Context: Bifrost - Context manager for clean setup and teardown of context objects.
 
 Trivia: In Norse Mythology, 'Bifrost' is the bridge that connects Midgard with Asgard.

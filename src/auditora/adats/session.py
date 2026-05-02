@@ -1,5 +1,5 @@
 """
-File: "src/auditora/adats/session.py"
+File: "auditora/adats/session.py"
 Context: Session Adat - Session manager for state tracking.
 
 Trivia: 'Adat' is the Arabic word for 'tool'. The plural is 'Adawat', but for simplicity I choose 'Adats')

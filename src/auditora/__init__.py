@@ -1,5 +1,5 @@
 """
-File: "src/auditora/__init__.py"
+File: "auditora/__init__.py"
 Context: Auditora - Non-invasive monitoring, tracking, and reporting framework
 for data processing pipelines and LLM-powered systems.
 """

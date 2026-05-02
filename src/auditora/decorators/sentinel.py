@@ -1,7 +1,8 @@
 """
-File: "src/auditora/decorators/sentinel.py"
+File: "auditora/decorators/sentinel.py"
 Context: High-performance context wrapper decorator for Auditora framework.
 """
+
 import time
 import inspect
 
@@ -15,10 +16,10 @@ from ..adats.report import DefaultReport
 
 
 def sentinel(
-        session: Any | None = None,
-        monitor: Any | None = None,
-        report: Any | None = None,
-        session_id: str | None = None,
+    session: Any | None = None,
+    monitor: Any | None = None,
+    report: Any | None = None,
+    session_id: str | None = None,
 ) -> Callable:
     """
     Decorator that provides context-local access to session, monitor and report tools.
@@ -32,12 +33,15 @@ def sentinel(
         report: Custom report object. Defaults to DefaultReport() if None.
         session_id: Optional session ID for tracking. Auto-generated if not provided.
     """
-    session_obj = session if session is not None else DefaultSession(session_id=session_id)
+    session_obj = (
+        session if session is not None else DefaultSession(session_id=session_id)
+    )
     monitor_obj = monitor if monitor is not None else DefaultMonitor()
     report_obj = report if report is not None else DefaultReport()
 
     def decorator(func: Callable) -> Callable:
         if inspect.iscoroutinefunction(func):
+
             @wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
 
@@ -48,13 +52,15 @@ def sentinel(
                     kwargs_keys=list(kwargs.keys()),
                 )
 
-                async with bifrost_async(session=session_obj, monitor=monitor_obj, report=report_obj):
+                async with bifrost_async(
+                    session=session_obj, monitor=monitor_obj, report=report_obj
+                ):
                     try:
                         start_time = time.perf_counter()
                         result = await func(*args, **kwargs)
                         duration = time.perf_counter() - start_time
 
-                        # TODO-0: We can skip this logging in stealth mode
+                        # TODO: We can skip this logging in stealth mode
                         report_obj.debug(
                             f"Completed {func.__name__!r}",
                             function_name=func.__name__,
@@ -80,6 +86,7 @@ def sentinel(
             return async_wrapper
 
         else:
+
             @wraps(func)
             def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
 
@@ -90,7 +97,9 @@ def sentinel(
                     kwargs_keys=list(kwargs.keys()),
                 )
 
-                with bifrost_sync(session=session_obj, monitor=monitor_obj, report=report_obj):
+                with bifrost_sync(
+                    session=session_obj, monitor=monitor_obj, report=report_obj
+                ):
                     try:
                         start_time = time.perf_counter()
                         result = func(*args, **kwargs)
