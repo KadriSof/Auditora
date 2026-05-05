@@ -1,5 +1,5 @@
 """
-File: "src/auditora/core/paragon.py"
+File: "auditora/core/paragon.py"
 Context: Paragon - Thread-local context storage manager for Auditora.
 """
 import contextvars

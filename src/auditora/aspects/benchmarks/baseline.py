@@ -1,9 +1,9 @@
 import statistics
 import time
 
-from src.auditora import sentinel, monitor, session
-from src.auditora.adats.monitor import DefaultMonitor, OptimizedMonitor
-from src.auditora.adats.session import DefaultSession
+from auditora import sentinel, monitor, session
+from auditora.adats.monitor import DefaultMonitor, OptimizedMonitor
+from auditora.adats.session import DefaultSession
 
 default_session = DefaultSession()
 

@@ -1,17 +1,38 @@
-from typing import NamedTuple
+"""
+Immutable EventRecord definition - bottom layer with no dependencies.
+"""
+
+from dataclasses import dataclass
+from types import MappingProxyType
+from typing import Dict, Any, Optional
 
 
-class EventRecord(NamedTuple):
-    """A record of an event that has occurred in the system.
-
-    Attributes:
-        etype (str): The type of event (e.g., 'login', 'file_access').
-        timestamp (str): The time the event occurred, in ISO 8601 format.
-        metadata (dict): Additional details about the event.
+@dataclass(frozen=True)
+class EventRecord:
     """
+    Immutable event record.
+    This is the core data structure with no external dependencies.
+    """
+
     etype: str
     timestamp: str
-    metadata: dict
+    metadata: MappingProxyType[str, Any]
 
-    def update_metadata(self, metadata):
-        self.metadata.update(metadata)
+    @classmethod
+    def create(
+        cls, etype: str, timestamp: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> "EventRecord":
+        """Factory method with immutable metadata."""
+        if metadata is None:
+            metadata = {}
+        return cls(
+            etype=etype, timestamp=timestamp, metadata=MappingProxyType(metadata.copy())
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {
+            "etype": self.etype,
+            "timestamp": self.timestamp,
+            "metadata": dict(self.metadata),
+        }

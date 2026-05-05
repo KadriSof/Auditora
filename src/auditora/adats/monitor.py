@@ -1,27 +1,33 @@
 """
-File: "src/auditora/adats/monitor.py"
+File: "auditora/adats/monitor.py"
 Context: Monitor Adat - Advanced monitor for events tracking with timing and metrics.
 """
+
 from array import array
 from typing import Any, Dict, List, Deque
 
-from src.auditora.aspects.events.record import EventRecord
+from auditora.aspects.events.record import EventRecord
 
 
 class DefaultMonitor:
     """Adat-2: Advanced monitor for events tracking with timing and metrics."""
 
     __slots__ = (
-        '_start_time', '_event_count', '_max_buffer_size',
-        '_events_buffer', '_events_metadata', '_metrics'
+        "_start_time",
+        "_event_count",
+        "_max_buffer_size",
+        "_events_buffer",
+        "_events_metadata",
+        "_metrics",
     )
+
     def __init__(self, max_buffer_size: int = 10000):
         self._start_time = time.perf_counter()
         self._event_count = 0
         self._max_buffer_size = max_buffer_size
 
         # Pre-allocate buffers for maximum efficiency
-        self._events_buffer = array('d', [0.0] * max_buffer_size)  # Timestamps
+        self._events_buffer = array("d", [0.0] * max_buffer_size)  # Timestamps
         self._events_metadata: Deque[EventRecord] = deque(maxlen=max_buffer_size)
         self._metrics: Dict[str, float] = {}
 
@@ -37,14 +43,10 @@ class DefaultMonitor:
         # Store event timestamp in pre-allocated array (zero-allocation)
         self._events_buffer[self._event_count] = elapsed
 
-        event_record = EventRecord(
-            etype=event,
-            timestamp=elapsed,
-            metadata=metadata
-        )
+        event_record = EventRecord(etype=event, timestamp=elapsed, metadata=metadata)
 
         if duration is not None:
-            event_record.details['duration'] = duration
+            event_record.details["duration"] = duration
 
         event_record.update_metadata(metadata)
 
@@ -58,7 +60,7 @@ class DefaultMonitor:
 
     def stop_timer(self, event: str, start_time: float, **metadata) -> float:
         """Stop a time and automatically track the duration of the event."""
-        duration : float = time.perf_counter() - start_time
+        duration: float = time.perf_counter() - start_time
         self.track(event=f"{event}_completed", duration=duration, **metadata)
         return duration
 
@@ -78,19 +80,19 @@ class DefaultMonitor:
         event_types = self._count_events_by_type()
 
         return {
-            'total_events': len(events_list),
-            'total_metrics': len(self._metrics),
-            'events_by_type': event_types,
-            'metrics': self._metrics.copy(),
-            'buffer_usage': self._event_count / self._max_buffer_size
+            "total_events": len(events_list),
+            "total_metrics": len(self._metrics),
+            "events_by_type": event_types,
+            "metrics": self._metrics.copy(),
+            "buffer_usage": self._event_count / self._max_buffer_size,
         }
 
     def serialize_events(self) -> bytes:
         """Serialize events to bytes using MessagePack."""
         events_data = {
-            'events': [event._asdict() for event in self._events_metadata],
-            'start_time': self._start_time,
-            'event_count': self._event_count
+            "events": [event._asdict() for event in self._events_metadata],
+            "start_time": self._start_time,
+            "event_count": self._event_count,
         }
         return msgpack.packb(events_data, use_bin_type=True)
 
@@ -105,7 +107,7 @@ class DefaultMonitor:
 
         if isinstance(events[-1], dict):
             for event in events:
-                event_type = event.get('event', 'N/A')
+                event_type = event.get("event", "N/A")
                 counts[event_type] = counts.get(event_type, 0) + 1
 
             return counts
@@ -134,7 +136,11 @@ class OptimizedMonitor(DefaultMonitor):
     """Optimized monitor with reduced memory footprint (penalty to throughput)."""
 
     __slots__ = (
-        '_event_count', '_events_buffer', '_pending_events', '_metrics_cache', '_buffer_header'
+        "_event_count",
+        "_events_buffer",
+        "_pending_events",
+        "_metrics_cache",
+        "_buffer_header",
     )
 
     def __init__(self, max_buffer_size: int = 10000):
@@ -152,11 +158,9 @@ class OptimizedMonitor(DefaultMonitor):
         self._metrics_cache = {}
 
         # Header for versioning and metadata
-        self._buffer_header = msgpack.packb({
-            'version': 1,
-            'created_at': time.time(),
-            'format': 'msgpack'
-        })
+        self._buffer_header = msgpack.packb(
+            {"version": 1, "created_at": time.time(), "format": "msgpack"}
+        )
 
     def track(self, event: str, duration: float | None = None, **metadata) -> None:
         """
@@ -201,13 +205,15 @@ class OptimizedMonitor(DefaultMonitor):
             Dict[str, Any]: Summary including total events, buffer size, and compression ratio.
         """
         summary = super().get_summary()
-        summary['total_events'] = self._event_count
-        summary['buffer_size_bytes'] = len(self._events_buffer)
-        summary['compression_ratio'] = self._calculate_compression_ratio()
+        summary["total_events"] = self._event_count
+        summary["buffer_size_bytes"] = len(self._events_buffer)
+        summary["compression_ratio"] = self._calculate_compression_ratio()
 
         return summary
 
-    def _serialize_event(self, event: str, duration: float | None, metadata: Dict) -> bytes:
+    def _serialize_event(
+        self, event: str, duration: float | None, metadata: Dict
+    ) -> bytes:
         """
         Serialize a single event to compact binary format.
 
@@ -224,16 +230,16 @@ class OptimizedMonitor(DefaultMonitor):
         """
         # Minimal event representation
         event_data = {
-            'e': event,
-            't': time.perf_counter() - self._start_time,
-            'ts': time.time()
+            "e": event,
+            "t": time.perf_counter() - self._start_time,
+            "ts": time.time(),
         }
 
         if duration is not None:
-            event_data['d'] = float(duration)
+            event_data["d"] = float(duration)
 
         if metadata:
-            event_data['m'] = metadata
+            event_data["m"] = metadata
 
         # Serialize with efficient settings
         return msgpack.packb(event_data, use_bin_type=True, strict_types=True)
@@ -261,18 +267,22 @@ class OptimizedMonitor(DefaultMonitor):
         try:
             while offset < len(buffer_view):
                 # Use 'unpackb' with offset to efficiently parse multiple objects
-                event_data, bytes_consumed = self._unpack_with_offset(data=buffer_view[offset:])
+                event_data, bytes_consumed = self._unpack_with_offset(
+                    data=buffer_view[offset:]
+                )
 
                 if event_data is not None:
                     # Convert back to full field names for usability
-                    full_event = self._deserialize_to_readable_format(event_data=event_data)
+                    full_event = self._deserialize_to_readable_format(
+                        event_data=event_data
+                    )
                     events.append(full_event)
 
                     offset += bytes_consumed
 
                 else:
                     # If we can't parse further, break to avoid infinite loop
-                    # TODO-0: Log warning about partial parsing and fallback to ?
+                    # TODO: Log warning about partial parsing and fallback to ?
                     break
 
         except (msgpack.UnpackException, ValueError) as e:
@@ -316,16 +326,16 @@ class OptimizedMonitor(DefaultMonitor):
             Dict[str, Any]: Event data dict with full field names.
         """
         readable_event = {
-            'event': event_data.get('e', ''),
-            'timestamp': event_data.get('t', 0.0),
-            'absolute_timestamp': event_data.get('ts', 0.0)
+            "event": event_data.get("e", ""),
+            "timestamp": event_data.get("t", 0.0),
+            "absolute_timestamp": event_data.get("ts", 0.0),
         }
 
-        if 'd' in event_data:
-            readable_event['duration'] = event_data['d']
+        if "d" in event_data:
+            readable_event["duration"] = event_data["d"]
 
-        if 'm' in event_data:
-            readable_event['metadata'] = event_data['m']
+        if "m" in event_data:
+            readable_event["metadata"] = event_data["m"]
 
         return readable_event
 
@@ -360,11 +370,11 @@ class OptimizedMonitor(DefaultMonitor):
         Raises:
             IOError: If file cannot be written.
         """
-        with open(filepath, 'wb') as f:
+        with open(filepath, "wb") as f:
             # Write header
             f.write(self._buffer_header)
             # Write event count
-            f.write(msgpack.packb({'event_count': self._event_count}))
+            f.write(msgpack.packb({"event_count": self._event_count}))
             # Write raw buffer
             f.write(self._events_buffer)
 
@@ -382,13 +392,13 @@ class OptimizedMonitor(DefaultMonitor):
             IOError: If file cannot be read.
             msgpack.UnpackException: if saved data is corrupt.
         """
-        with open(filepath, 'rb') as f:
+        with open(filepath, "rb") as f:
             header_data = f.read(len(self._buffer_header))
             header = msgpack.unpackb(header_data)
 
             event_count_data = msgpack.unpackb(f.read())
             self._events_buffer = bytearray(f.read())
-            self._event_count = event_count_data['event_count']
+            self._event_count = event_count_data["event_count"]
 
         # Invalidate cached parsed events
         self._pending_events = []
@@ -407,16 +417,19 @@ class OptimizedMonitor(DefaultMonitor):
             Dict[str, Any]: Statistics including size and efficiency metrics.
         """
         return {
-            'total_events': self._event_count,
-            'buffer_size_bytes': len(self._events_buffer),
-            'bytes_per_event': len(self._events_buffer) / self._event_count if self._event_count else 0,
-            'compression_ratio': self._calculate_compression_ratio(),
-            'memory_usage_mb': len(self._events_buffer) / (1024 * 1024)
+            "total_events": self._event_count,
+            "buffer_size_bytes": len(self._events_buffer),
+            "bytes_per_event": (
+                len(self._events_buffer) / self._event_count if self._event_count else 0
+            ),
+            "compression_ratio": self._calculate_compression_ratio(),
+            "memory_usage_mb": len(self._events_buffer) / (1024 * 1024),
         }
 
 
 class AsyncMonitor(DefaultMonitor):
     """Asynchronous monitor for high-throughput event tracking."""
+
     def __init__(self, queue_size: int = 1000):
         super().__init__()
         self._event_queue = deque(maxsize=queue_size)
@@ -425,10 +438,12 @@ class AsyncMonitor(DefaultMonitor):
     async def start_processor(self):
         """Start the background event processor."""
         import asyncio
+
         self._processor_task = asyncio.create_task(self._process_events())
 
     async def _process_events(self):
         import asyncio
+
         while True:
             event = await asyncio.to_thread(self._event_queue.get)
             # Process events (persist, send to external system, etc.)
@@ -437,6 +452,7 @@ class AsyncMonitor(DefaultMonitor):
     def track(self, event: str, **metadata) -> None:
         """Enqueue event for asynchronous processing."""
         import asyncio
+
         try:
             self._event_queue.put_nowait((event, metadata))
         except asyncio.QueueFull:

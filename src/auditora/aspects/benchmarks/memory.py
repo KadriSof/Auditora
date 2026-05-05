@@ -1,4 +1,4 @@
-from src.auditora.aspects.benchmarks.baseline import track_events_basic
+from auditora.aspects.benchmarks.baseline import track_events_basic
 
 
 def benchmark_with_memory():

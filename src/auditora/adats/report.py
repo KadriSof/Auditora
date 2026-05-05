@@ -1,5 +1,5 @@
 """
-File: "src/auditora/adats/report.py"
+File: "auditora/adats/report.py"
 Context: Report Adat - Enhanced reporting utility with structured logging for events.
 """
 import sys
